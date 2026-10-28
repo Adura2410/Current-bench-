@@ -27,6 +27,7 @@ jobs:
         env:
           FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
           NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+          NEWSDATA_FULL_CONTENT: ${{ vars.NEWSDATA_FULL_CONTENT }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           FOOTBALL_COMPETITIONS: ${{ vars.FOOTBALL_COMPETITIONS }}
         run: python scripts/collect_news.py
