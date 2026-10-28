@@ -153,7 +153,9 @@ def football_matches():
 def main():
     articles=[]
     for category,source,url in FEEDS:articles.extend(read_feed(category,source,url))
-    articles.extend(gdelt_articles())\n    articles.extend(newsdata_articles())\n    articles.extend(guardian_articles())
+    articles.extend(gdelt_articles())
+    articles.extend(newsdata_articles())
+    articles.extend(guardian_articles())
     unique={}
     for a in articles:
         key=re.sub(r"\W+"," ",a["title"].lower()).strip()
