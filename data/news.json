@@ -1,0 +1,10 @@
+{
+  "generated_at": null,
+  "articles": [],
+  "matches": [],
+  "providers": {
+    "rss": "waiting for first workflow run",
+    "gdelt": "waiting for first workflow run",
+    "football_data_org": "awaiting optional secret"
+  }
+}
