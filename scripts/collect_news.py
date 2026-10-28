@@ -192,7 +192,11 @@ def main():
     unique={}
     for a in articles:
         key=re.sub(r"\W+"," ",a["title"].lower()).strip()
-        if key and key not in unique:unique[key]=a
+        if not key: continue
+        if key not in unique:
+            unique[key]=a
+        elif a.get("content") and not unique[key].get("content"):
+            unique[key]=a
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
     # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
