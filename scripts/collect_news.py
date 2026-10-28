@@ -89,12 +89,52 @@ def gdelt_articles():
         return out
     except Exception as exc:
         print(f"GDELT skipped: {exc}");return []
+def newsdata_articles():
+    # Optional aggregator; verify the account's current commercial-use and attribution terms.
+    key=os.getenv("NEWSDATA_API_KEY","").strip()
+    if not key:
+        return []
+    url="https://newsdata.io/api/1/latest?"+urllib.parse.urlencode({"apikey":key,"country":"ng","language":"en"})
+    try:
+        data=json.loads(request(url,timeout=20)); out=[]
+        for a in data.get("results",[]):
+            title=clean_html(a.get("title","")); link=a.get("link","")
+            if title and link.startswith("http"):
+                cats=a.get("category") or []
+                category="Nigeria"
+                if any("business" in str(x).lower() for x in cats): category="Business"
+                elif any("entertainment" in str(x).lower() for x in cats): category="Entertainment"
+                elif any("politic" in str(x).lower() for x in cats): category="Politics"
+                out.append({"title":title,"summary":clean_html(a.get("description",""))[:420],"url":link,"published":parse_date(a.get("pubDate")),"source":(a.get("source_name") or "NewsData.io"),"category":category,"categories":[category]})
+        print(f"NewsData.io: {len(out)} headlines")
+        return out
+    except Exception as exc:
+        print(f"NewsData.io skipped: {exc}");return []
+def guardian_articles():
+    # Optional official publisher API; obey the Guardian Open Platform terms and attribution rules.
+    key=os.getenv("GUARDIAN_API_KEY","").strip()
+    if not key:
+        return []
+    url="https://content.guardianapis.com/search?"+urllib.parse.urlencode({"api-key":key,"order-by":"newest","page-size":50,"show-fields":"trailText"})
+    try:
+        data=json.loads(request(url,timeout=20)); out=[]
+        for a in (data.get("response") or {}).get("results",[]):
+            title=clean_html(a.get("webTitle","")); link=a.get("webUrl","")
+            if title and link.startswith("http"):
+                section=(a.get("sectionName") or "World")
+                low=section.lower()
+                category="Business" if "business" in low else ("Politics" if "politic" in low else ("Technology" if "technology" in low else "World"))
+                out.append({"title":title,"summary":clean_html((a.get("fields") or {}).get("trailText",""))[:420],"url":link,"published":parse_date(a.get("webPublicationDate")),"source":"The Guardian","category":category,"categories":[category]})
+        print(f"The Guardian API: {len(out)} headlines")
+        return out
+    except Exception as exc:
+        print(f"The Guardian API skipped: {exc}");return []
 def football_matches():
     token=os.getenv("FOOTBALL_DATA_TOKEN","").strip()
     if not token:
         print("Football API not configured: set GitHub secret FOOTBALL_DATA_TOKEN to enable fixtures.")
         return []
-    competitions=os.getenv("FOOTBALL_COMPETITIONS","PL,PD,BL1,SA,FL1,CL,EL,DED,PPL,CLI").split(",")
+    competitions=(os.getenv("FOOTBALL_COMPETITIONS") or "PL,PD,BL1,SA,FL1,CL,EL,DED,PPL,CLI").split(",")
     matches=[]
     # football-data.org competition codes: free-tier availability depends on the account's current plan.
     for code in [c.strip() for c in competitions if c.strip()][:12]:
@@ -113,7 +153,7 @@ def football_matches():
 def main():
     articles=[]
     for category,source,url in FEEDS:articles.extend(read_feed(category,source,url))
-    articles.extend(gdelt_articles())
+    articles.extend(gdelt_articles())\n    articles.extend(newsdata_articles())\n    articles.extend(guardian_articles())
     unique={}
     for a in articles:
         key=re.sub(r"\W+"," ",a["title"].lower()).strip()
