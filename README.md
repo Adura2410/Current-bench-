@@ -24,13 +24,15 @@ A GitHub Actions workflow runs every three hours and can also be started manuall
 4. Optional: add repository variable `FOOTBALL_COMPETITIONS` with comma-separated competition codes your plan supports, for example `PL,PD,BL1,SA,FL1,CL`.
 5. Open **Actions → Refresh Current Bench feeds → Run workflow** to test the collector.
 
-Never put API tokens in `index.html`, public JavaScript, or committed files.
+Never put API tokens in `index.html`, public JavaScript, or committed files.\n\nOptional news API keys can be added under **Settings → Secrets and variables → Actions → New repository secret** using the exact names `NEWSDATA_API_KEY` and `GUARDIAN_API_KEY`. The collector skips optional integrations when keys are absent.
 
 ## API integration strategy
 
 ### Included in the collector now
 - Multiple RSS feed endpoints (Google News topic feeds, BBC, Al Jazeera, Premium Times, The Guardian Nigeria, Punch, DW). Availability and reuse terms vary by publisher.
 - GDELT DOC API (no key for basic requests; service limits and availability apply).
+- NewsData.io API adapter (optional `NEWSDATA_API_KEY`; verify current commercial-use terms and quota).
+- The Guardian Open Platform adapter (optional `GUARDIAN_API_KEY`; follow its attribution and API terms).
 - football-data.org v4 (optional token; competition coverage depends on account plan).
 
 ### Candidate integrations after verification
