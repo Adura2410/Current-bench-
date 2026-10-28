@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Collect attributed news headlines and optional football fixtures into data/news.json."""
+import json, os, re, time, urllib.parse, urllib.request, urllib.error
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from html import unescape
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "data" / "news.json"
+UA = "CurrentBenchNewsCollector/1.0 (+https://github.com/Adura2410/Current-bench-)"
+FEEDS = [
+    ("Nigeria", "Google News Nigeria", "https://news.google.com/rss/search?q=Nigeria+news&hl=en-NG&gl=NG&ceid=NG:en"),
+    ("Politics", "Google News Nigeria Politics", "https://news.google.com/rss/search?q=Nigeria+politics&hl=en-NG&gl=NG&ceid=NG:en"),
+    ("Business", "Google News Nigeria Business", "https://news.google.com/rss/search?q=Nigeria+business+economy&hl=en-NG&gl=NG&ceid=NG:en"),
+    ("Entertainment", "Google News Nigeria Entertainment", "https://news.google.com/rss/search?q=Nigeria+entertainment&hl=en-NG&gl=NG&ceid=NG:en"),
+    ("Football", "Google News Football", "https://news.google.com/rss/search?q=world+football+soccer&hl=en&gl=US&ceid=US:en"),
+    ("World", "Google News World", "https://news.google.com/rss/search?q=world+news&hl=en&gl=US&ceid=US:en"),
+    ("Technology", "Google News Technology", "https://news.google.com/rss/search?q=technology+news&hl=en&gl=US&ceid=US:en"),
+    ("Africa", "Google News Africa", "https://news.google.com/rss/search?q=Africa+news&hl=en&gl=NG&ceid=NG:en"),
+    ("World", "BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("World", "BBC Africa", "https://feeds.bbci.co.uk/news/world/africa/rss.xml"),
+    ("Business", "BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+    ("Technology", "BBC Technology", "https://feeds.bbci.co.uk/news/technology/rss.xml"),
+    ("World", "Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
+    ("Nigeria", "Premium Times Nigeria", "https://www.premiumtimesng.com/feed"),
+    ("Nigeria", "The Guardian Nigeria", "https://guardian.ng/feed/"),
+    ("Nigeria", "Punch Nigeria", "https://punchng.com/feed/"),
+    ("World", "DW Top Stories", "https://rss.dw.com/rdf/rss-en-all"),
+]
+def request(url, headers=None, timeout=18):
+    h={"User-Agent":UA,"Accept":"application/rss+xml, application/xml, application/json, text/xml, */*"}
+    if headers: h.update(headers)
+    req=urllib.request.Request(url,headers=h)
+    with urllib.request.urlopen(req,timeout=timeout) as res:
+        return res.read()
+def clean_html(value):
+    value=re.sub(r"<(script|style)[^>]*>.*?</\1>"," ",value or "",flags=re.I|re.S)
+    value=re.sub(r"<[^>]+>"," ",value)
+    return re.sub(r"\s+"," ",unescape(value)).strip()
+def parse_date(value):
+    if not value:return None
+    try:
+        d=parsedate_to_datetime(value)
+        if d.tzinfo is None:d=d.replace(tzinfo=timezone.utc)
+        return d.astimezone(timezone.utc).isoformat()
+    except Exception:
+        try:return datetime.fromisoformat(value.replace("Z","+00:00")).astimezone(timezone.utc).isoformat()
+        except Exception:return None
+def tag_text(node, names):
+    for el in node.iter():
+        if el.tag.split("}")[-1].lower() in names and el.text and el.text.strip():
+            return el.text.strip()
+    return ""
+def read_feed(category, source, url):
+    try:
+        root=ET.fromstring(request(url))
+        items=[]
+        for item in root.iter():
+            if item.tag.split("}")[-1].lower() not in ("item","entry"):continue
+            title=clean_html(tag_text(item,{"title"}))
+            link=""
+            for el in item.iter():
+                if el.tag.split("}")[-1].lower()=="link":
+                    link=el.attrib.get("href","") or (el.text or "").strip()
+                    if link:break
+            summary=clean_html(tag_text(item,{"description","summary","encoded","content"}))
+            published=parse_date(tag_text(item,{"pubdate","published","updated","date"}))
+            if title and link.startswith(("https://","http://")):
+                items.append({"title":title,"summary":summary[:420],"url":link,"published":published,"source":source,"category":category,"categories":[category]})
+        print(f"{source}: {len(items)} headlines")
+        return items
+    except Exception as exc:
+        print(f"Feed skipped: {source}: {exc}")
+        return []
+def gdelt_articles():
+    # GDELT DOC API is a supplemental open global-news search endpoint; no API key is required.
+    q='(Nigeria OR Nigerian) (politics OR economy OR business OR government OR election)'
+    url="https://api.gdeltproject.org/api/v2/doc/doc?"+urllib.parse.urlencode({"query":q,"mode":"ArtList","format":"json","sort":"DateDesc","maxrecords":50})
+    try:
+        data=json.loads(request(url,timeout=25))
+        out=[]
+        for a in data.get("articles",[]):
+            title=clean_html(a.get("title","")); link=a.get("url","")
+            if title and link.startswith("http"):
+                out.append({"title":title,"summary":"","url":link,"published":parse_date(a.get("seendate","")),"source":a.get("domain","GDELT indexed publisher"),"category":"Nigeria","categories":["Nigeria","Politics"]})
+        print(f"GDELT: {len(out)} headlines")
+        return out
+    except Exception as exc:
+        print(f"GDELT skipped: {exc}");return []
+def football_matches():
+    token=os.getenv("FOOTBALL_DATA_TOKEN","").strip()
+    if not token:
+        print("Football API not configured: set GitHub secret FOOTBALL_DATA_TOKEN to enable fixtures.")
+        return []
+    competitions=os.getenv("FOOTBALL_COMPETITIONS","PL,PD,BL1,SA,FL1,CL,EL,DED,PPL,CLI").split(",")
+    matches=[]
+    # football-data.org competition codes: free-tier availability depends on the account's current plan.
+    for code in [c.strip() for c in competitions if c.strip()][:12]:
+        try:
+            raw=json.loads(request("https://api.football-data.org/v4/competitions/"+urllib.parse.quote(code)+"/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED,FINISHED",headers={"X-Auth-Token":token},timeout=20))
+            for m in raw.get("matches",[]):
+                home=(m.get("homeTeam") or {}).get("name","Home")
+                away=(m.get("awayTeam") or {}).get("name","Away")
+                score=m.get("score") or {}
+                ft=score.get("fullTime") or {}
+                scoretext=(str(ft.get("home"))+" - "+str(ft.get("away"))) if ft.get("home") is not None and ft.get("away") is not None else "—"
+                matches.append({"competition":(m.get("competition") or {}).get("name",code),"date":m.get("utcDate"),"home":home,"away":away,"score":scoretext,"status":m.get("status","")})
+            time.sleep(.15)
+        except Exception as exc:print(f"Football competition {code} skipped: {exc}")
+    return matches
+def main():
+    articles=[]
+    for category,source,url in FEEDS:articles.extend(read_feed(category,source,url))
+    articles.extend(gdelt_articles())
+    unique={}
+    for a in articles:
+        key=re.sub(r"\W+"," ",a["title"].lower()).strip()
+        if key and key not in unique:unique[key]=a
+    articles=list(unique.values())
+    articles.sort(key=lambda x:x.get("published") or "",reverse=True)
+    # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
+    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","football_data_org":"enabled" if os.getenv("FOOTBALL_DATA_TOKEN") else "awaiting optional secret"}}
+    OUT.parent.mkdir(parents=True,exist_ok=True)
+    OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+    print(f"Wrote {min(len(articles),300)} unique headlines to {OUT}")
+if __name__=="__main__":main()
