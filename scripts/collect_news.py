@@ -90,26 +90,59 @@ def gdelt_articles():
     except Exception as exc:
         print(f"GDELT skipped: {exc}");return []
 def newsdata_articles():
-    # Optional aggregator; verify the account's current commercial-use and attribution terms.
+    # Fetch ordinary Nigerian headlines and, separately, articles for which NewsData.io
+    # reports a full-content field. Availability depends on the API plan and publisher.
     key=os.getenv("NEWSDATA_API_KEY","").strip()
     if not key:
         return []
-    url="https://newsdata.io/api/1/latest?"+urllib.parse.urlencode({"apikey":key,"country":"ng","language":"en"})
-    try:
-        data=json.loads(request(url,timeout=20)); out=[]
-        for a in data.get("results",[]):
-            title=clean_html(a.get("title","")); link=a.get("link","")
-            if title and link.startswith("http"):
+    out=[]
+    requests_to_make=[
+        ("headlines", {"country":"ng","language":"en","size":10}),
+        ("full-content", {"country":"ng","language":"en","full_content":1,"size":10}),
+    ]
+    for label, params in requests_to_make:
+        query={"apikey":key, **params}
+        url="https://newsdata.io/api/1/latest?"+urllib.parse.urlencode(query)
+        try:
+            data=json.loads(request(url,timeout=20))
+            results=data.get("results") or []
+            print(f"NewsData.io {label}: {len(results)} results")
+            for a in results:
+                title=clean_html(a.get("title","")); link=a.get("link","")
+                if not title or not link.startswith(("https://","http://")):
+                    continue
                 cats=a.get("category") or []
                 category="Nigeria"
                 if any("business" in str(x).lower() for x in cats): category="Business"
                 elif any("entertainment" in str(x).lower() for x in cats): category="Entertainment"
                 elif any("politic" in str(x).lower() for x in cats): category="Politics"
-                out.append({"title":title,"summary":clean_html(a.get("description",""))[:420],"url":link,"published":parse_date(a.get("pubDate")),"source":(a.get("source_name") or "NewsData.io"),"category":category,"categories":[category]})
-        print(f"NewsData.io: {len(out)} headlines")
-        return out
-    except Exception as exc:
-        print(f"NewsData.io skipped: {exc}");return []
+                elif any(term in (title+" "+clean_html(a.get("description",""))).lower() for term in ("football","soccer","premier league")): category="Football"
+                raw_content=a.get("content") or a.get("full_content") or ""
+                if isinstance(raw_content, dict):
+                    raw_content=raw_content.get("content") or raw_content.get("text") or raw_content.get("full_text") or ""
+                content=clean_html(raw_content)[:20000] if isinstance(raw_content,str) else ""
+                article={
+                    "title":title,
+                    "summary":clean_html(a.get("description",""))[:700],
+                    "url":link,
+                    "published":parse_date(a.get("pubDate")),
+                    "source":(a.get("source_name") or "NewsData.io"),
+                    "category":category,
+                    "categories":[category],
+                }
+                if content:
+                    article["content"]=content
+                    article["content_type"]="provider_full_content"
+                # Prefer the version with content if the same URL was returned twice.
+                existing=next((i for i,x in enumerate(out) if x.get("url")==link),None)
+                if existing is None:
+                    out.append(article)
+                elif content and not out[existing].get("content"):
+                    out[existing]=article
+        except Exception as exc:
+            print(f"NewsData.io {label} request skipped: {exc}")
+    print(f"NewsData.io: {len(out)} unique headlines")
+    return out
 def guardian_articles():
     # Optional official publisher API; obey the Guardian Open Platform terms and attribution rules.
     key=os.getenv("GUARDIAN_API_KEY","").strip()
