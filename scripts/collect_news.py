@@ -96,10 +96,10 @@ def newsdata_articles():
     if not key:
         return []
     out=[]
-    requests_to_make=[
-        ("headlines", {"country":"ng","language":"en","size":10}),
-        ("full-content", {"country":"ng","language":"en","full_content":1,"size":10}),
-    ]
+    requests_to_make=[("headlines", {"country":"ng","language":"en","size":10})]
+    # Enable only if the account plan permits the full-content filter (some keys return HTTP 403).
+    if os.getenv("NEWSDATA_FULL_CONTENT","").strip()=="1":
+        requests_to_make.append(("full-content", {"country":"ng","language":"en","full_content":1,"size":10}))
     for label, params in requests_to_make:
         query={"apikey":key, **params}
         url="https://newsdata.io/api/1/latest?"+urllib.parse.urlencode(query)
