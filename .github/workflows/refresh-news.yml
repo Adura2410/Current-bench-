@@ -1,0 +1,37 @@
+name: Refresh Current Bench feeds
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */3 * * *"
+permissions:
+  contents: write
+concurrency:
+  group: refresh-news
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect headlines and football data
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+          FOOTBALL_COMPETITIONS: ${{ vars.FOOTBALL_COMPETITIONS }}
+        run: python scripts/collect_news.py
+      - name: Commit refreshed data when changed
+        run: |
+          git config user.name "current-bench-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/news.json
+          if git diff --cached --quiet; then
+            echo "No feed changes to commit."
+          else
+            git commit -m "chore: refresh news feeds"
+            git push
+          fi
