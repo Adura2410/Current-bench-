@@ -141,7 +141,7 @@ def newsdata_articles():
                     out[existing]=article
         except Exception as exc:
             print(f"NewsData.io {label} request skipped: {exc}")
-    print(f"NewsData.io: {len(out)} unique headlines; {sum(1 for item in out if item.get(\"content\"))} with content text")
+    print(f"NewsData.io: {len(out)} unique headlines; {sum(1 for item in out if item.get('content'))} with content text")
     return out
 def guardian_articles():
     # Optional official publisher API; obey the Guardian Open Platform terms and attribution rules.
