@@ -22,6 +22,8 @@ jobs:
       - name: Collect headlines and football data
         env:
           FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+          NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           FOOTBALL_COMPETITIONS: ${{ vars.FOOTBALL_COMPETITIONS }}
         run: python scripts/collect_news.py
       - name: Commit refreshed data when changed
