@@ -258,15 +258,23 @@ def normalise_match(m, competition="Football"):
     competitors=comps[0].get("competitors",[]) if comps and isinstance(comps[0],dict) else []
     if competitors:
         for t in competitors:
-            if t.get("homeAway")=="home": home=home or t
-            elif t.get("homeAway")=="away": away=away or t
+            side=t.get("homeAway")
+            team=t.get("team") if isinstance(t.get("team"),dict) else t
+            if side=="home":
+                home=home or team
+            elif side=="away":
+                away=away or team
         date=date or comps[0].get("date")
     def nm(x, fallback):
-        if isinstance(x,dict): return x.get("name") or x.get("displayName") or x.get("shortName") or fallback
+        if isinstance(x,dict):
+            nested=x.get("team") if isinstance(x.get("team"),dict) else {}
+            return x.get("name") or x.get("displayName") or x.get("shortName") or nested.get("displayName") or nested.get("name") or nested.get("shortDisplayName") or fallback
         return x if isinstance(x,str) and x else fallback
     hn,an=nm(home,"Home"),nm(away,"Away")
     status=m.get("status") or m.get("state") or m.get("statusText") or fixture.get("status") or ""
-    if isinstance(status,dict): status=status.get("short") or status.get("name") or status.get("description") or ""
+    if isinstance(status,dict):
+        typ=status.get("type") if isinstance(status.get("type"),dict) else {}
+        status=typ.get("name") or typ.get("description") or status.get("short") or status.get("name") or status.get("description") or ""
     score="—"; sc=m.get("score")
     if goals.get("home") is not None and goals.get("away") is not None: score=f"{goals['home']} - {goals['away']}"
     if isinstance(sc,dict):
