@@ -509,20 +509,30 @@ def football_matches():
     return result[:1000]
 
 def infer_article_categories(article):
-    """Add useful topical labels even when a source feed assigns only a country label."""
+    """Infer topical tags from story text, not publisher names."""
     existing=[str(c).strip() for c in (article.get("categories") or []) if str(c).strip()]
     if article.get("category") and article["category"] not in existing:
         existing.append(article["category"])
-    text=" ".join(str(article.get(k) or "") for k in ("title","summary","source","category")).lower()
+    headline=" ".join(str(article.get(k) or "") for k in ("title","summary")).lower()
+    other_sport=re.search(r"\bcricket\b|\bodi\b|\bt20\b|\binnings\b|\bwicket\b|\bbowler\b|\bbatter\b|tri-series|\brugby\b|\bbasketball\b|\btennis\b|\bgolf\b",headline,re.I)
+    football_pattern=r"\bfootball\b|\bsoccer\b|\bepl\b|premier league|champions league|europa league|conference league|la liga|bundesliga|serie a|ligue 1|eredivisie|fifa|uefa|afcon|transfer window|striker|goalkeeper|matchday|manchester united|manchester city|real madrid|barcelona|arsenal|chelsea|liverpool|tottenham|inter milan|juventus|bayern munich|super eagles|black stars|indomitable lions"
+    football_signal=re.search(football_pattern,headline,re.I)
+    wrong_football=bool(other_sport and not football_signal)
+    if wrong_football:
+        existing=[c for c in existing if c.lower()!="football"]
+        if str(article.get("category") or "").lower()=="football":
+            article["category"]="World"
+        if "World" not in existing:
+            existing.append("World")
     rules=[
-        ("Football", r"\bfootball\b|\bsoccer\b|\bepl\b|premier league|champions league|europa league|conference league|la liga|bundesliga|serie a|ligue 1|eredivisie|fifa|uefa|afcon|world cup|transfer window|striker|goalkeeper|matchday|manchester united|manchester city|real madrid|barcelona|arsenal|chelsea|liverpool|tottenham|inter milan|juventus|bayern munich|super eagles|black stars|indomitable lions"),
+        ("Football", football_pattern),
         ("Business", r"\bbusiness\b|economy|economic|finance|financial|stock market|inflation|investment|investor|company|companies|startup|trade deal|revenue|profit|banking|interest rate|naira|exchange rate|oil price|crude oil"),
         ("Politics", r"\bpolitic\w*\b|election|president|governor|senator|senate|parliament|lawmakers|minister|government|governance|opposition party|campaign|ballot|tinubu|atiku|peter obi|2027 election"),
         ("Entertainment", r"nollywood|afrobeats|celebrity|entertainment|actor\b|actress\b|singer|musician|new album|movie|film premiere|box office|music video|grammy|award show"),
         ("Technology", r"\btechnology\b|\btech\b|artificial intelligence|\bai\b|software|cybersecurity|smartphone|app launch|data breach|semiconductor|robotics|cloud computing"),
     ]
     for label,pattern in rules:
-        if re.search(pattern,text,re.I) and label not in existing:
+        if re.search(pattern,headline,re.I) and label not in existing and not (wrong_football and label=="Football"):
             existing.append(label)
     article["categories"]=existing
     return article
