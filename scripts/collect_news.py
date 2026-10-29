@@ -530,11 +530,11 @@ def infer_article_categories(article):
 def main():
     articles=[]
     for category,source,url in FEEDS:articles.extend(read_feed(category,source,url))
-    articles=[infer_article_categories(a) for a in articles]
     articles.extend(newscentral_articles())
     articles.extend(gdelt_articles())
     articles.extend(newsdata_articles())
     articles.extend(guardian_articles())
+    articles=[infer_article_categories(a) for a in articles]
     unique={}
     for a in articles:
         key=re.sub(r"\W+"," ",a["title"].lower()).strip()
