@@ -61,9 +61,10 @@ button[data-read-index]:focus-visible,.reader-trigger:focus-visible{
 
 /* Responsive full-height vertical navigation drawer */
 .hamburger{display:flex;align-items:center;justify-content:center;gap:5px;flex-direction:column;width:48px;height:44px;flex:0 0 48px;border:1px solid #3a5270;border-radius:10px;background:#172d4a;color:#fff;cursor:pointer;position:relative;z-index:97}
-.hamburger span{display:block;width:21px;height:2px;background:#ffad78;border-radius:2px;transition:transform .18s,opacity .18s}
+.hamburger span{display:block;width:21px;height:2px;background:#ffad78;border-radius:2px}
 .hamburger b{font-size:9px;line-height:1;color:#fff;font-weight:800}
-.hamburger[aria-expanded="true"] span:first-child{transform:translateY(7px) rotate(45deg)}.hamburger[aria-expanded="true"] span:nth-child(2){opacity:0}.hamburger[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.menu-close{position:absolute;top:14px;right:14px;z-index:2;width:40px;height:40px;min-height:40px!important;display:flex;align-items:center;justify-content:center;padding:0!important;border:1px solid #3a5270!important;border-radius:10px!important;background:#172d4a!important;color:#fff!important;font-size:29px!important;font-weight:500!important;line-height:1;text-align:center!important;cursor:pointer}
+.menu-close:hover,.menu-close:focus-visible{background:#244466!important;border-color:#ffad78!important;outline:2px solid #ffad78;outline-offset:2px}
 body.menu-open{overflow:hidden}
 body.menu-open:after{content:"";position:fixed;inset:0;background:rgba(1,7,16,.72);z-index:98}
 .site-menu{position:fixed;z-index:100;left:0;top:0;bottom:0;margin:0;padding:82px 16px 24px;background:#0b192b;border:0;border-right:1px solid #344b66;display:flex;flex-direction:column;align-items:stretch;gap:8px;width:min(320px,88vw);height:100vh;height:100dvh;overflow-y:auto;overscroll-behavior:contain;box-shadow:18px 0 45px #0008}
@@ -72,17 +73,18 @@ body.menu-open:after{content:"";position:fixed;inset:0;background:rgba(1,7,16,.7
 .site-menu button.active,.site-menu button:hover,.site-menu button:focus-visible{color:#fff;border-color:#ff8a45;background:#1a304b;outline-offset:2px}
 .site-menu:before{content:"CURRENT BENCH";position:absolute;top:24px;left:18px;color:#fff;font-size:17px;font-weight:950;letter-spacing:.4px}
 .site-menu:after{content:"News that moves you";position:absolute;top:48px;left:18px;color:#aebed1;font-size:11px}
-@media(max-width:760px){.header-inner{padding:14px 15px;gap:10px;flex-wrap:wrap}.brand{flex:1}.hamburger{order:2}.search{order:3;flex-basis:100%;max-width:none;margin-left:0}.site-menu{padding:82px 14px 20px;width:min(320px,88vw)}main{padding-bottom:40px}.footer{padding-bottom:30px}}
+@media(max-width:760px){.header-inner{padding:14px 15px;gap:10px;flex-wrap:wrap}.hamburger{order:0}.brand{order:1;flex:1}.search{order:2;flex-basis:100%;max-width:none;margin-left:0}.site-menu{padding:82px 14px 20px;width:min(320px,88vw)}main{padding-bottom:40px}.footer{padding-bottom:30px}}
 </style>
 </head>
 <body>
 <div class="topline"></div>
 <header><div class="header-inner">
-<a class="brand" href="#" aria-label="Current Bench home"><img class="brandmark" src="favicon.svg" alt=""><div><div class="brandname">CURRENT <span>BENCH</span></div><div class="tagline">News that moves you</div></div></a>
 <button class="hamburger" id="menuToggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="siteMenu"><span></span><span></span><span></span><b>Menu</b></button>
+<a class="brand" href="#" aria-label="Current Bench home"><img class="brandmark" src="favicon.svg" alt=""><div><div class="brandname">CURRENT <span>BENCH</span></div><div class="tagline">News that moves you</div></div></a>
 <form class="search" id="searchForm"><input id="searchInput" type="search" placeholder="Search headlines..." aria-label="Search headlines"><button type="submit">Search</button></form>
 </div>
 <nav class="site-menu hidden" id="siteMenu" aria-label="Main navigation">
+<button class="menu-close" id="menuClose" type="button" aria-label="Close navigation menu">×</button>
 <button class="active" data-section="Home">Top Stories</button><button data-section="Nigeria">Nigeria</button><button data-section="World">World</button><button data-section="Entertainment">Entertainment</button><button data-section="Business">Business</button><button data-section="Politics">Politics</button><button data-section="Football">Football</button><button data-section="Technology">Technology</button>
 </nav></header>
 <main>
@@ -114,6 +116,7 @@ function closeMenu(){const menu=$("siteMenu"),toggle=$("menuToggle");menu.classL
 function toggleMenu(){const menu=$("siteMenu"),toggle=$("menuToggle"),open=toggle.getAttribute("aria-expanded")!=="true";menu.classList.toggle("hidden",!open);document.body.classList.toggle("menu-open",open);toggle.setAttribute("aria-expanded",String(open));toggle.setAttribute("aria-label",open?"Close navigation menu":"Open navigation menu");}
 function setSection(s){state.section=s;state.filter="All";render();closeMenu();window.scrollTo({top:0,behavior:"smooth"});}
 $("menuToggle").addEventListener("click",toggleMenu);
+$("menuClose").addEventListener("click",closeMenu);
 document.addEventListener("click",e=>{if(document.body.classList.contains("menu-open")&&!$("siteMenu").contains(e.target)&&!$("menuToggle").contains(e.target))closeMenu();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu();});
 document.querySelectorAll("#siteMenu [data-section]").forEach(b=>b.addEventListener("click",()=>setSection(b.dataset.section)));
