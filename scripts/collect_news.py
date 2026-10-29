@@ -218,7 +218,7 @@ def guardian_articles():
         return out
     except Exception as exc:
         print(f"The Guardian API skipped: {exc}");return []
-FOOTBALL_PROVIDER_STATUS = {"matchgrind": "not checked", "football_data_org": "not checked"}
+FOOTBALL_PROVIDER_STATUS = {"matchgrind": "not checked", "football_data_org": "not checked", "api_football": "not checked", "espn": "not checked"}
 
 def match_in_window(item, past_days=7, future_days=21):
     """Keep only fixtures with parseable dates near the current UTC date."""
@@ -379,8 +379,48 @@ def api_football_matches():
     print(f"API-Football: {len(found)} usable matches across priority competitions")
     return found
 
+def espn_matches():
+    """Supplement restricted current-season cup coverage with ESPN's public soccer scoreboard."""
+    # Public scoreboard endpoints; no API key. Keep requests bounded to the same fixture window.
+    leagues = [
+        ("eng.1", "Premier League"),
+        ("esp.1", "La Liga"),
+        ("uefa.europa", "UEFA Europa League"),
+        ("eng.league_cup", "Carabao Cup"),
+        ("uefa.champions", "UEFA Champions League"),
+        ("eng.fa", "FA Cup"),
+    ]
+    now = datetime.now(timezone.utc)
+    start_day = datetime.fromtimestamp(now.timestamp()-7*86400, timezone.utc).strftime("%Y%m%d")
+    end_day = datetime.fromtimestamp(now.timestamp()+21*86400, timezone.utc).strftime("%Y%m%d")
+    found = []
+    errors = 0
+    for slug, label in leagues:
+        try:
+            url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard?" + urllib.parse.urlencode({"dates": start_day + "-" + end_day})
+            payload = json.loads(request(url, timeout=20))
+            events = payload.get("events") or []
+            for row in events:
+                item = normalise_match(row, label)
+                if item and match_in_window(item):
+                    item["competition"] = label
+                    # ESPN event status has nested type fields; expose a simple state when available.
+                    status = row.get("status") or {}
+                    if isinstance(status, dict):
+                        typ = status.get("type") or {}
+                        if isinstance(typ, dict):
+                            item["status"] = typ.get("name") or typ.get("description") or item.get("status", "")
+                    found.append(item)
+            time.sleep(.15)
+        except Exception as exc:
+            errors += 1
+            print(f"ESPN {label} scoreboard skipped: {type(exc).__name__}")
+    FOOTBALL_PROVIDER_STATUS["espn"] = f"{len(found)} usable matches across {len(leagues)-errors}/{len(leagues)} competitions"
+    print(f"ESPN football: {len(found)} usable matches across {len(leagues)-errors}/{len(leagues)} competitions")
+    return found
+
 def football_matches():
-    combined=api_football_matches()+matchgrind_matches()+football_data_matches()
+    combined=espn_matches()+api_football_matches()+matchgrind_matches()+football_data_matches()
     unique={}
     for m in combined:
         key=(re.sub(r"\\W+"," ",m["home"].lower()).strip(),re.sub(r"\\W+"," ",m["away"].lower()).strip(),m.get("date","")[:10])
@@ -426,7 +466,7 @@ def main():
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
     # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
-    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":FOOTBALL_PROVIDER_STATUS.get("matchgrind","not checked"),"football_data_org":FOOTBALL_PROVIDER_STATUS.get("football_data_org","not checked"),"api_football":FOOTBALL_PROVIDER_STATUS.get("api_football","not checked")}}
+    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":FOOTBALL_PROVIDER_STATUS.get("matchgrind","not checked"),"football_data_org":FOOTBALL_PROVIDER_STATUS.get("football_data_org","not checked"),"api_football":FOOTBALL_PROVIDER_STATUS.get("api_football","not checked"),"espn":FOOTBALL_PROVIDER_STATUS.get("espn","not checked")}}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
     print(f"Wrote {min(len(articles),300)} unique headlines to {OUT}")
