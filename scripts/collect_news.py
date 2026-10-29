@@ -215,6 +215,20 @@ def guardian_articles():
         return out
     except Exception as exc:
         print(f"The Guardian API skipped: {exc}");return []
+FOOTBALL_PROVIDER_STATUS = {"matchgrind": "not checked", "football_data_org": "not checked"}
+
+def match_in_window(item, past_days=7, future_days=21):
+    """Keep only fixtures with parseable dates near the current UTC date."""
+    try:
+        raw = str(item.get("date") or "").strip()
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return now.timestamp() - past_days * 86400 <= dt.timestamp() <= now.timestamp() + future_days * 86400
+    except (TypeError, ValueError, OverflowError):
+        return False
+
 def football_rows(payload):
     if isinstance(payload,list): return [x for x in payload if isinstance(x,dict)]
     if isinstance(payload,dict):
@@ -269,7 +283,7 @@ def matchgrind_matches():
             for key,val in catalog.items():
                 if isinstance(val,dict) and ("slug" in val or "id" in val): leagues.append(dict(val,slug=val.get("slug") or key))
         if not leagues:
-            print("MatchGrind: no recognised leagues in catalog"); return []
+            FOOTBALL_PROVIDER_STATUS["matchgrind"] = "no recognised leagues in catalog"; print("MatchGrind: no recognised leagues in catalog"); return []
         found=[]; seen=set()
         for league in leagues[:60]:
             slug=league.get("slug") or league.get("id") or league.get("key")
@@ -284,23 +298,22 @@ def matchgrind_matches():
                 for row in football_rows(data):
                     item=normalise_match(row,str(label))
                     if not item: continue
-                    try:
-                        dt=datetime.fromisoformat(item["date"].replace("Z","+00:00"))
-                        if dt.tzinfo is None: dt=dt.replace(tzinfo=timezone.utc)
-                        now=datetime.now(timezone.utc)
-                        if dt.timestamp()<now.timestamp()-7*86400 or dt.timestamp()>now.timestamp()+21*86400: continue
-                    except Exception: pass
+                    if not match_in_window(item):
+                        continue
                     found.append(item)
                 time.sleep(.08)
             except Exception as exc: print(f"MatchGrind competition {slug} skipped: {exc}")
-        print(f"MatchGrind: {len(found)} matches from {len(seen)} competition slugs")
+        FOOTBALL_PROVIDER_STATUS["matchgrind"] = f"{len(found)} usable matches from {len(seen)} competitions"
+        print(f"MatchGrind: {len(found)} usable matches from {len(seen)} competition slugs")
         return found
     except Exception as exc:
+        FOOTBALL_PROVIDER_STATUS["matchgrind"] = f"request failed: {type(exc).__name__}"
         print(f"MatchGrind API skipped: {exc}"); return []
 
 def football_data_matches():
     token=os.getenv("FOOTBALL_DATA_TOKEN","").strip()
     if not token:
+        FOOTBALL_PROVIDER_STATUS["football_data_org"] = "token not configured"
         print("football-data.org: optional token not configured")
         return []
     codes=(os.getenv("FOOTBALL_COMPETITIONS") or "PL,PD,BL1,SA,FL1,CL,EL,DED,PPL,CLI").split(",")
@@ -310,10 +323,13 @@ def football_data_matches():
             data=json.loads(request("https://api.football-data.org/v4/competitions/"+urllib.parse.quote(code)+"/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED,FINISHED",headers={"X-Auth-Token":token},timeout=20))
             for row in data.get("matches",[]):
                 item=normalise_match(row,code)
-                if item: matches.append(item)
+                if item and match_in_window(item): matches.append(item)
             time.sleep(.15)
-        except Exception as exc: print(f"football-data.org competition {code} skipped: {exc}")
-    print(f"football-data.org: {len(matches)} matches")
+        except Exception as exc:
+            FOOTBALL_PROVIDER_STATUS["football_data_org"] = f"request error: {type(exc).__name__}"
+            print(f"football-data.org competition {code} skipped: {exc}")
+    FOOTBALL_PROVIDER_STATUS["football_data_org"] = f"{len(matches)} usable matches"
+    print(f"football-data.org: {len(matches)} usable matches")
     return matches
 
 def football_matches():
@@ -363,7 +379,7 @@ def main():
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
     # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
-    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":"attempted public API","football_data_org":"enabled" if os.getenv("FOOTBALL_DATA_TOKEN") else "awaiting optional secret"}}
+    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":FOOTBALL_PROVIDER_STATUS.get("matchgrind","not checked"),"football_data_org":FOOTBALL_PROVIDER_STATUS.get("football_data_org","not checked")}}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
     print(f"Wrote {min(len(articles),300)} unique headlines to {OUT}")
