@@ -514,7 +514,7 @@ def infer_article_categories(article):
     if article.get("category") and article["category"] not in existing:
         existing.append(article["category"])
     headline=" ".join(str(article.get(k) or "") for k in ("title","summary")).lower()
-    other_sport=re.search(r"\bcricket\b|\bodi\b|\bt20\b|\binnings\b|\bwicket\b|\bbowler\b|\bbatter\b|tri-series|\brugby\b|\bbasketball\b|\btennis\b|\bgolf\b",headline,re.I)
+    other_sport=re.search(r"\bcricket\b|\bodi\b|\bt20\b|\binnings\b|\bwicket\b|\bbowler\b|\bbatter\b|tri-series|\brugby\b|\bbasketball\b|\btennis\b|\bgolf\b|\blpga\b|\bpga tour\b|ryder cup|birdie|hole-in-one",headline,re.I)
     football_pattern=r"\bfootball\b|\bsoccer\b|\bepl\b|premier league|champions league|europa league|conference league|la liga|bundesliga|serie a|ligue 1|eredivisie|fifa|uefa|afcon|transfer window|striker|goalkeeper|matchday|manchester united|manchester city|real madrid|barcelona|arsenal|chelsea|liverpool|tottenham|inter milan|juventus|bayern munich|super eagles|black stars|indomitable lions"
     football_signal=re.search(football_pattern,headline,re.I)
     wrong_football=bool(other_sport and not football_signal)
@@ -546,18 +546,24 @@ def main():
     articles.extend(guardian_articles())
     articles=[infer_article_categories(a) for a in articles]
     unique={}
+    url_index={}
     for a in articles:
-        key=re.sub(r"\W+"," ",a["title"].lower()).strip()
-        if not key: continue
+        title_key=re.sub(r"\W+"," ",a.get("title","").lower()).strip()
+        if not title_key: continue
+        parts=urllib.parse.urlsplit(str(a.get("url") or "").strip())
+        url_key=urllib.parse.urlunsplit((parts.scheme.lower(),parts.netloc.lower(),parts.path.rstrip("/") or "/",parts.query,"")) if parts.netloc else ""
+        key=url_index.get(url_key) if url_key else None
+        if key is None and title_key in unique:
+            key=title_key
         incoming=list(dict.fromkeys([str(c) for c in (a.get("categories") or []) if c]))
         if a.get("category") and a["category"] not in incoming:
             incoming.append(a["category"])
-        if key not in unique:
-            a["categories"]=incoming
+        if key is None:
+            key=title_key
             unique[key]=a
+            a["categories"]=incoming
+            if url_key: url_index[url_key]=key
             continue
-        # A headline may arrive from multiple topic feeds. Keep every supported
-        # category instead of letting whichever feed runs first decide its section.
         current=unique[key]
         merged=list(dict.fromkeys((current.get("categories") or [])+incoming))
         if current.get("category") and current["category"] not in merged:
@@ -568,6 +574,7 @@ def main():
         if a.get("content") and not current.get("content"):
             a["categories"]=merged
             unique[key]=a
+        if url_key: url_index[url_key]=key
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
     # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
