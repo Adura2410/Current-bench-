@@ -95,6 +95,103 @@ body.menu-open:after{content:"";position:fixed;inset:0;background:rgba(1,7,16,.7
 .site-menu:before{content:"CURRENT BENCH";position:absolute;top:24px;left:18px;color:#fff;font-size:17px;font-weight:950;letter-spacing:.4px}
 .site-menu:after{content:"News that moves you";position:absolute;top:48px;left:18px;color:#aebed1;font-size:11px}
 @media(max-width:760px){.header-inner{padding:14px 15px;gap:10px;flex-wrap:wrap}.hamburger{order:0}.brand{order:1;flex:1}.search{order:2;flex-basis:100%;max-width:none;margin-left:0}.site-menu{padding:82px 14px 20px;width:min(320px,88vw)}main{padding-bottom:40px}.footer{padding-bottom:30px}}
+
+/* Current Bench dashboard redesign — based on the saved dashboard reference; functionality and existing IDs remain unchanged */
+:root{--navy:#03172b;--navy2:#082846;--ink:#f4f8ff;--muted:#a8c2df;--paper:#052344;--white:#fff;--orange:#0783f9;--line:#164a79;--blue:#20a9ff}
+html,body{min-height:100%;background:#052344;color:#f4f8ff}
+body{background:linear-gradient(120deg,#06294d 0%,#031a32 100%)}
+header{position:relative;z-index:110;background:linear-gradient(100deg,#03172b,#041d36);border-bottom:1px solid #16416a}
+.header-inner{max-width:none;margin-left:312px;padding:14px 22px;gap:20px;min-height:76px}
+.hamburger{order:0;display:flex;align-items:center;justify-content:center;gap:0;position:relative;width:44px;height:44px;flex:0 0 44px;border:0;border-radius:8px;background:transparent;color:#fff;padding:8px}
+.hamburger span{width:25px;height:3px;background:#fff;border-radius:2px}
+.hamburger b{display:none}
+.brand{gap:8px}
+.brandmark{width:38px;height:38px;flex-basis:38px;border:2px solid #fff;box-shadow:none}
+.brandname{font-size:24px;letter-spacing:-1px}
+.brandname span,.footer-brand span{color:#159dff}
+.tagline{display:none}
+.search{max-width:none;flex:1;margin-left:42px;background:#f3f7fc;border:1px solid #d9e7f6;border-radius:8px;min-height:42px}
+.search input{color:#163553;padding:11px 15px;font-size:13px}
+.search input::placeholder{color:#435d7b}
+.search button{min-width:50px;background:#086be5;color:white;padding:0 16px;font-size:0}
+.search button:after{content:"⌕";font-size:27px;line-height:1}
+.nav{display:none!important}
+.site-menu,.site-menu.hidden{position:fixed;z-index:120;left:0;top:0;bottom:0;margin:0;padding:96px 15px 22px;background:linear-gradient(180deg,#03172b 0%,#021326 100%);border:0;border-right:1px solid #16416a;display:flex!important;flex-direction:column;align-items:stretch;gap:5px;width:312px;height:100vh;height:100dvh;overflow-y:auto;box-shadow:none;transform:none}
+.site-menu:before{content:"";position:absolute;top:30px;left:30px;width:40px;height:40px;border:2px solid #fff;border-radius:50%;background:transparent}
+.site-menu:after{content:"◎ CURRENT BENCH";position:absolute;top:34px;left:80px;color:#fff;font-size:23px;font-weight:900;letter-spacing:-.8px}
+.menu-close{position:absolute!important;top:12px!important;right:12px!important;width:32px!important;height:32px!important;min-height:32px!important;padding:0!important;border:0!important;border-radius:7px!important;background:transparent!important;color:#fff!important;font-size:26px!important;line-height:1}
+.site-menu button:not(.menu-close){flex:0 0 auto;width:100%;min-height:43px;border:1px solid transparent;border-radius:7px;background:transparent;color:#f1f6ff;padding:10px 14px;text-align:left;font-size:15px;font-weight:650;cursor:pointer}
+.site-menu button:not(.menu-close):before{display:inline-block;width:27px;margin-right:10px;color:#fff;font-size:17px;text-align:center}
+.site-menu button[data-section="Home"]:before{content:"⌂"}
+.site-menu button[data-section="Nigeria"]:before{content:"🇳🇬"}
+.site-menu button[data-section="World"]:before{content:"◎"}
+.site-menu button[data-section="Entertainment"]:before{content:"♟"}
+.site-menu button[data-section="Business"]:before{content:"▥"}
+.site-menu button[data-section="Politics"]:before{content:"♜"}
+.site-menu button[data-section="Football"]:before{content:"⚽"}
+.site-menu button[data-section="Technology"]:before{content:"▦"}
+.site-menu button:not(.menu-close):hover,.site-menu button:not(.menu-close):focus-visible{background:#0b3e78;border-color:#1768b9;color:#fff}
+.site-menu button:not(.menu-close).active{background:linear-gradient(100deg,#0875ed,#0755c5);border-color:#0875ed;color:#fff;box-shadow:none}
+main{max-width:none;margin:0 0 0 312px;padding:20px 22px 64px;min-width:0}
+.breaking{background:#062342;border:1px solid #17466f;border-radius:8px;margin-bottom:16px}
+.breaking strong{background:#086be5}
+.eyebrow{color:#27aaff}
+.hero-title{font-size:clamp(24px,2.6vw,34px);line-height:1.12;letter-spacing:-1px;margin:4px 0}
+.subhead{margin-bottom:14px;color:#aac5e0}
+.section-head{margin:18px 0 12px;border-bottom:1px solid #1a4b78;padding-bottom:8px}
+.section-head h2{font-size:20px}
+.feature-grid{grid-template-columns:minmax(0,1.5fr) minmax(250px,.9fr);gap:12px;background:#eaf3fc;padding:9px;border-radius:8px}
+.feature{min-height:310px;border-radius:7px;background:linear-gradient(0deg,#03172be8,transparent 70%),linear-gradient(135deg,#0b477a,#061c32);padding:24px}
+.feature h2{font-size:clamp(23px,2.4vw,32px)}
+.feature p{color:#d5e7f9}
+.feature .read{background:#0875ed;color:#fff}
+.side-stack{gap:8px}
+.side-story{background:#f0f6fd;color:#092849;border:0;border-bottom:1px solid #d6e4f2;border-radius:0;padding:13px;min-height:88px}
+.side-story h3{font-size:14px}
+.side-story .meta{color:#45678c}
+.filters button{border:1px solid #16456f;border-radius:7px;background:#092b4c;color:#dcecff}
+.filters button.active{background:#0875ed;border-color:#0875ed;color:#fff}
+.story-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.story{background:linear-gradient(180deg,#062c50,#031a32);border:1px solid #145084;border-radius:8px;padding:14px}
+.story:hover{border-color:#159dff}
+.story h3{font-size:14px}
+.story .reader-trigger,button[data-read-index],.reader-trigger,.open.reader-trigger{background:#0875ed;border-color:#278bfa;color:#fff}
+.story .reader-trigger:hover,button[data-read-index]:hover,.reader-trigger:hover{background:#1688ff;border-color:#55aaff;color:#fff}
+.empty{background:#062646;border-color:#22527d;color:#b8d0e9}
+.football-panel{background:linear-gradient(120deg,#03172b,#0a3a68);border:1px solid #145084;border-radius:9px}
+.match{background:#062747;border-color:#174b78;border-radius:8px}
+.footer{margin-left:312px;background:#021326;border-top:2px solid #0875ed;padding-bottom:38px}
+.footer-inner{max-width:none}
+.footer a:hover{color:#55baff}
+.footer-links a{background:#082744;border-color:#16456f}
+.mobile-bottom{background:#03172b;border-color:#16456f}
+.mobile-bottom button.active{color:#159dff}
+.reader-panel{background:#031a32;border-color:#164b7b}
+@media(max-width:1000px){.header-inner{margin-left:280px;padding:12px 14px;gap:10px}.site-menu,.site-menu.hidden{width:280px}main,.footer{margin-left:280px}.search{margin-left:8px}.feature-grid{grid-template-columns:1fr}.story-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+ header{position:relative}
+ .header-inner{margin-left:0;padding:12px 14px;gap:10px;min-height:0}
+ .hamburger{order:0;width:38px;height:38px;flex-basis:38px;background:#082b4c;border:1px solid #17456f}
+ .brandname{font-size:20px}
+ .brandmark{width:34px;height:34px;flex-basis:34px}
+ .search{order:3;flex-basis:100%;margin:0;max-width:none}
+ .site-menu,.site-menu.hidden{width:min(312px,88vw);padding:88px 15px 22px;box-shadow:18px 0 45px #0008}
+ .site-menu:before{top:25px;left:22px}
+ .site-menu:after{top:33px;left:72px;font-size:19px}
+ body.menu-open:after{content:"";position:fixed;inset:0;z-index:115;background:#010b19b8;backdrop-filter:blur(2px)}
+ main{margin:0;padding:16px 13px 90px}
+ .feature-grid{grid-template-columns:1fr;padding:7px}
+ .feature{min-height:280px;padding:19px}
+ .side-stack{grid-template-columns:1fr}
+ .side-story{min-height:78px}
+ .story-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .story{padding:11px}
+ .footer{margin-left:0;padding:26px 16px 90px}
+ .footer-inner{grid-template-columns:1fr}
+ .mobile-bottom{display:flex}
+}
+@media(max-width:390px){.story-grid{grid-template-columns:1fr}.feature{min-height:250px}}
+
 </style>
 </head>
 <body>
