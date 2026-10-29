@@ -77,6 +77,56 @@ def read_feed(category, source, url):
     except Exception as exc:
         print(f"Feed skipped: {source}: {exc}")
         return []
+def newscentral_articles():
+    # News Central Site states its written stories are CC BY 4.0 and may be
+    # republished in full with credit and a link to the original story.
+    # Its terms exclude photographs, so this collector stores text only.
+    url="https://newscentral.site/feed/en.json"
+    try:
+        data=json.loads(request(url,timeout=20))
+        out=[]
+        for item in data.get("items",[]):
+            title=clean_html(item.get("title",""))
+            link=item.get("url") or item.get("external_url") or ""
+            if not title or not link.startswith(("https://","http://")):
+                continue
+            tags=item.get("tags") or []
+            tag_text_value=" ".join(str(t.get("name","") if isinstance(t,dict) else t) for t in tags)
+            searchable=(title+" "+clean_html(item.get("summary",""))+" "+tag_text_value).lower()
+            if any(w in searchable for w in ("nollywood","afrobeats","celebrity","entertainment","film","music")):
+                category="Entertainment"
+            elif any(w in searchable for w in ("football","soccer","premier league","champions league","matchday")):
+                category="Football"
+            elif any(w in searchable for w in ("business","market","economy","finance","company","trade")):
+                category="Business"
+            elif any(w in searchable for w in ("politic","election","president","parliament","government","minister")):
+                category="Politics"
+            elif any(w in searchable for w in ("technology","tech","artificial intelligence","software","cyber")):
+                category="Technology"
+            elif any(w in searchable for w in ("nigeria","nigerian","lagos","abuja","west africa")):
+                category="Nigeria"
+            else:
+                category="World"
+            raw=item.get("content_text") or item.get("content_html") or item.get("summary") or ""
+            body=clean_html(raw)[:20000]
+            article={
+                "title":title,
+                "summary":clean_html(item.get("summary",""))[:700],
+                "url":link,
+                "published":parse_date(item.get("date_published") or item.get("date_modified")),
+                "source":"News Central Site (CC BY 4.0)",
+                "category":category,
+                "categories":[category],
+            }
+            if body:
+                article["content"]=body
+                article["content_type"]="cc_by_4.0"
+            out.append(article)
+        print(f"News Central Site CC BY 4.0: {len(out)} stories; {sum(1 for x in out if x.get('content'))} with text")
+        return out
+    except Exception as exc:
+        print(f"News Central Site feed skipped: {exc}")
+        return []
 def gdelt_articles():
     # GDELT DOC API is a supplemental open global-news search endpoint; no API key is required.
     q='(Nigeria OR Nigerian) (politics OR economy OR business OR government OR election)'
@@ -189,6 +239,7 @@ def football_matches():
 def main():
     articles=[]
     for category,source,url in FEEDS:articles.extend(read_feed(category,source,url))
+    articles.extend(newscentral_articles())
     articles.extend(gdelt_articles())
     articles.extend(newsdata_articles())
     articles.extend(guardian_articles())
