@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /data/
+Sitemap: https://adura2410.github.io/Current-bench/sitemap.xml
