@@ -370,7 +370,7 @@ function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt
 function dateText(v){if(!v)return "Recently published";const d=new Date(v);return isNaN(d)?"Recently published":d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}function matchDateText(v){if(!v)return "Kick-off time unavailable";const d=new Date(v);if(isNaN(d))return "Kick-off time unavailable";return d.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"});}
 function inferredCategories(x){
  const headline=[x.title,x.summary].filter(Boolean).join(" ").toLowerCase();
- const otherSport=/\bcricket\b|\bodi\b|\bt20\b|\binnings\b|\bwicket\b|\bbowler\b|\bbatter\b|tri-series|\brugby\b|\bbasketball\b|\btennis\b|\bgolf\b/;
+ const otherSport=/\bcricket\b|\bodi\b|\bt20\b|\binnings\b|\bwicket\b|\bbowler\b|\bbatter\b|tri-series|\brugby\b|\bbasketball\b|\btennis\b|\bgolf\b|\blpga\b|\bpga tour\b|ryder cup|birdie|hole-in-one/;
  const footballSignal=/\bfootball\b|\bsoccer\b|\bepl\b|premier league|champions league|europa league|conference league|la liga|bundesliga|serie a|ligue 1|eredivisie|fifa|uefa|afcon|transfer window|striker|goalkeeper|matchday|manchester united|manchester city|real madrid|barcelona|arsenal|chelsea|liverpool|tottenham|inter milan|juventus|bayern munich|psg\b|super eagles|black stars|indomitable lions/i;
  const wrongFootball=otherSport.test(headline)&&!footballSignal.test(headline);
  const existing=(Array.isArray(x.categories)?x.categories:[]).map(v=>String(v||"").trim()).filter(Boolean).filter(v=>!(wrongFootball&&v.toLowerCase()==="football"));
