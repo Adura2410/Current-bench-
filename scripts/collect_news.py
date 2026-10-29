@@ -359,7 +359,13 @@ def api_football_matches():
             url="https://v3.football.api-sports.io/fixtures?league="+str(league_id)+"&season="+str(season)+"&from="+from_day+"&to="+to_day
             payload=json.loads(request(url,headers={"x-apisports-key":token},timeout=20))
             if payload.get("errors"):
-                print(f"API-Football {label} skipped: provider returned an error")
+                # Log the provider's diagnostic message, never request headers or credentials.
+                provider_errors = payload.get("errors")
+                if isinstance(provider_errors, dict):
+                    safe_errors = "; ".join(f"{str(k)[:80]}={str(v)[:240]}" for k, v in provider_errors.items())
+                else:
+                    safe_errors = str(provider_errors)[:320]
+                print(f"API-Football {label} skipped: {safe_errors or 'provider returned an unspecified error'}")
                 continue
             for row in payload.get("response",[]):
                 item=normalise_match(row,label)
