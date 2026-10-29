@@ -1,4 +1,5 @@
 name: Deploy Current Bench to GitHub Pages
+# Use a fresh workflow run after artifact/deployment failures; do not rerun only the deploy job.
 
 on:
   push:
