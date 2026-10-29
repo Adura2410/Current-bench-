@@ -268,6 +268,41 @@ button[data-read-index]:hover,.reader-trigger:hover,.reader-source:hover{backgro
  .mobile-bottom{display:flex}
 }
 @media(max-width:390px){.story-grid{grid-template-columns:1fr}}
+
+/* FINAL NAVIGATION FIX — one consistent slide-out menu on desktop and mobile.
+   Keep the drawer closed on first load; never reserve a permanent sidebar column. */
+#siteMenu{display:flex;position:fixed;z-index:120;inset:0 auto 0 0;width:min(300px,88vw);height:100vh;height:100dvh;overflow-y:auto;flex-direction:column;gap:6px;padding:92px 16px 24px;background:linear-gradient(180deg,#031a30 0%,#021426 100%);border-right:1px solid #183955;box-shadow:20px 0 55px rgba(0,0,0,.45);transform:none}
+#siteMenu.hidden{display:none!important}
+#siteMenu:not(.hidden){display:flex!important}
+#siteMenu .menu-close{display:flex!important;position:absolute;top:15px;right:15px;z-index:2;align-items:center;justify-content:center;width:40px;height:40px;min-height:40px;padding:0;border:1px solid #294967!important;border-radius:9px!important;background:#082743!important;color:#fff!important;font-size:28px!important;line-height:1;cursor:pointer}
+#siteMenu .menu-close:hover,#siteMenu .menu-close:focus-visible{background:#0b3e78!important;border-color:#168bff!important}
+#siteMenu button:not(.menu-close){width:100%;flex:0 0 auto;min-height:43px;border:1px solid transparent;border-radius:7px;background:transparent;color:#f1f6ff;padding:10px 14px;text-align:left;font-size:14px;font-weight:700;cursor:pointer}
+#siteMenu button:not(.menu-close):hover,#siteMenu button:not(.menu-close):focus-visible{background:#0b3e78;border-color:#1768b9;color:#fff}
+#siteMenu button:not(.menu-close).active{background:#086be5;border-color:#168bff;color:#fff}
+#menuToggle{display:flex!important;position:relative;z-index:121;align-items:center;justify-content:center;flex:0 0 46px;width:46px;height:46px;cursor:pointer}
+body.menu-open{overflow:hidden}
+body.menu-open:after{content:"";position:fixed;inset:0;z-index:115;background:rgba(1,8,19,.72);backdrop-filter:blur(2px)}
+.header-inner{margin-left:auto!important;max-width:1200px!important}
+main{margin-left:auto!important;max-width:1200px!important}
+.footer{margin-left:0!important}
+@media(min-width:761px){
+ #menuToggle{display:flex!important}
+ #siteMenu,#siteMenu.hidden{width:min(300px,88vw)}
+ body.menu-open:after{display:block!important}
+ .header-inner{padding:16px 22px!important}
+ main{padding:24px 22px 100px!important}
+ .footer{margin-left:0!important}
+}
+@media(max-width:760px){
+ #menuToggle{display:flex!important;order:0}
+ #siteMenu,#siteMenu.hidden{width:min(312px,88vw);padding:88px 15px 22px}
+ #siteMenu.hidden{display:none!important}
+ #siteMenu:not(.hidden){display:flex!important}
+ .header-inner{margin:0!important}
+ main{margin:0!important}
+ .footer{margin-left:0!important}
+}
+
 </style>
 </head>
 <body>
@@ -306,13 +341,13 @@ function card(x){const category=x.category||((x.categories||[])[0])||"News";retu
 function openReader(index){const x=state.items[index];if(!x)return;let body=x.content||x.full_text||x.full_content||"";if(body&&typeof body==="object")body=body.content||body.text||body.full_text||"";body=String(body||"").trim();const hasFull=body.length>0;$("readerMeta").textContent=(x.source||"News source")+" · "+dateText(x.published)+" · "+(hasFull?"Available article text":"Summary");$("readerTitle").textContent=x.title||"Untitled story";$("readerContent").textContent=hasFull?body:(x.summary||"The provider did not supply full article text for this story.");const sourceUrl=String(x.url||x.link||x.article_url||"");const sourceLink=$("readerSourceLink");if(/^https?:\/\//i.test(sourceUrl)){sourceLink.href=sourceUrl;sourceLink.classList.remove("hidden");}else{sourceLink.removeAttribute("href");sourceLink.classList.add("hidden");}$("readerNote").textContent=x.content_type==="cc_by_4.0"?"Republished under the source's stated Creative Commons Attribution 4.0 licence. Credit: News Central Site. The licence does not cover photographs; Current Bench displays text only.":"Content supplied by the news feed. Publisher attribution is shown above. Reuse rights depend on the provider and publisher.";if(!hasFull){$("readerNote").textContent="Full article text was not included in the available feed. You can use the source link above to continue reading at the publisher.";}$("readerBackdrop").classList.remove("hidden");document.body.style.overflow="hidden";}
 function closeReader(){$("readerBackdrop").classList.add("hidden");document.body.style.overflow="";}
 function render(){const arr=filtered();$("sectionTitle").textContent=state.section!=="Home"?state.section:(state.filter!=="All"?state.filter:"Top Stories");$("storyCount").textContent=arr.length+" stories";document.querySelectorAll("[data-section]").forEach(b=>b.classList.toggle("active",b.dataset.section===state.section));$("footballBlock").classList.toggle("hidden",state.section!=="Football");if(arr.length){$("featureGrid").innerHTML='<article class="feature"><div class="eyebrow">'+esc(arr[0].category||"TOP STORY")+'</div><h2>'+esc(arr[0].title)+'</h2><p>'+esc((arr[0].summary||"Follow the link to read the full story from the original publisher.").slice(0,260))+'</p><div class="meta">'+esc(arr[0].source||"News source")+' · '+esc(dateText(arr[0].published))+'</div>'+readerButton(arr[0],"Read story →")+'</article><div class="side-stack">'+arr.slice(1,4).map(x=>'<article class="side-story"><span class="category">'+esc(x.category||"LATEST")+'</span><h3>'+esc(x.title)+'</h3><div class="meta">'+esc(x.source||"News source")+' · '+esc(dateText(x.published))+'</div>'+readerButton(x)+'</article>').join("")+'</div>';$("storyGrid").innerHTML=arr.slice(4).map(card).join("");}else{$("featureGrid").innerHTML='<div class="empty">No matching stories have loaded yet. Try another section or check back after the next automatic refresh.</div>';$("storyGrid").innerHTML="";}}
-function closeMenu(){const menu=$("siteMenu"),toggle=$("menuToggle");menu.classList.add("hidden");document.body.classList.remove("menu-open");toggle.setAttribute("aria-expanded","false");toggle.setAttribute("aria-label","Open navigation menu");}
-function toggleMenu(){const menu=$("siteMenu"),toggle=$("menuToggle"),open=toggle.getAttribute("aria-expanded")!=="true";menu.classList.toggle("hidden",!open);document.body.classList.toggle("menu-open",open);toggle.setAttribute("aria-expanded",String(open));toggle.setAttribute("aria-label",open?"Close navigation menu":"Open navigation menu");}
-function setSection(s){state.section=s;state.filter="All";render();closeMenu();window.scrollTo({top:0,behavior:"smooth"});}
-$("menuToggle").addEventListener("click",toggleMenu);
-$("menuClose").addEventListener("click",closeMenu);
+function closeMenu(){const menu=$("siteMenu"),toggle=$("menuToggle");if(!menu||!toggle)return;menu.classList.add("hidden");document.body.classList.remove("menu-open");document.body.style.overflow="";toggle.setAttribute("aria-expanded","false");toggle.setAttribute("aria-label","Open navigation menu");}
+function toggleMenu(){const menu=$("siteMenu"),toggle=$("menuToggle");if(!menu||!toggle)return;const open=menu.classList.contains("hidden");if(open){menu.classList.remove("hidden");document.body.classList.add("menu-open");document.body.style.overflow="hidden";}else{closeMenu();}toggle.setAttribute("aria-expanded",String(open));toggle.setAttribute("aria-label",open?"Close navigation menu":"Open navigation menu");}
+function setSection(s){state.section=s;state.filter="All";render();closeMenu();window.scrollTo({top:0,behavior:"auto"});}
+$("menuToggle").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();toggleMenu();});
+$("menuClose").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();closeMenu();});
 document.addEventListener("click",e=>{if(document.body.classList.contains("menu-open")&&!$("siteMenu").contains(e.target)&&!$("menuToggle").contains(e.target))closeMenu();});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeReader();}});
 document.querySelectorAll("#siteMenu [data-section]").forEach(b=>b.addEventListener("click",()=>setSection(b.dataset.section)));
 $("searchForm").addEventListener("submit",e=>{e.preventDefault();state.query=$("searchInput").value.trim();state.section="Home";state.filter="All";render();document.querySelector(".section-head").scrollIntoView({behavior:"smooth",block:"start"});});$("searchInput").addEventListener("search",()=>{if(!$("searchInput").value.trim()){state.query="";render();}});
 async function load(){try{const r=await fetch("./data/news.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw new Error("feed not ready");const d=await r.json();state.items=Array.isArray(d.articles)?d.articles:[];state.matches=Array.isArray(d.matches)?d.matches:[];if(state.items.length){$("breakingText").textContent=state.items.slice(0,5).map(x=>x.title).join("  •  ");}else{}if(state.matches.length){const status=m=>String(m.status||"").toUpperCase();const live=state.matches.filter(m=>["LIVE","IN_PLAY","INPLAY","PAUSED","1H","2H","HT","ET","BT","P","INT"].includes(status(m)));const upcoming=state.matches.filter(m=>["SCHEDULED","TIMED","NOT_STARTED","NS"].includes(status(m))&&(!Number.isFinite(Date.parse(m.date))||Date.parse(m.date)>=Date.now()));const played=state.matches.filter(m=>["FINISHED","FT","AET","PEN","AWD","WO"].includes(status(m)));const byDate=(a,b)=>{const da=Date.parse(a.date)||0,db=Date.parse(b.date)||0;return da-db;};upcoming.sort(byDate);live.sort(byDate);played.sort((a,b)=>byDate(b,a));const renderMatch=m=>'<div class="match"><small>'+esc(m.competition||"FOOTBALL")+' · '+esc(matchDateText(m.date))+'</small><strong>'+esc(m.home||"Home")+' vs '+esc(m.away||"Away")+'</strong><div class="score">'+esc(m.score||"—")+'</div><small class="match-status">'+esc(({SCHEDULED:"Scheduled",TIMED:"Scheduled",NOT_STARTED:"Scheduled",IN_PLAY:"Live",INPLAY:"Live",LIVE:"Live",PAUSED:"Half-time","1H":"First half","2H":"Second half",HT:"Half-time",ET:"Extra time",BT:"Break",P:"Penalties",INT:"Interrupted",NS:"Scheduled",FINISHED:"Finished",FT:"Finished",AET:"After extra time",PEN:"Penalties",POSTPONED:"Postponed",PST:"Postponed",SUSPENDED:"Suspended",SUSP:"Suspended",CANCELLED:"Cancelled",CANC:"Cancelled",AWARDED:"Awarded",AWD:"Awarded",WO:"Walkover"})[status(m)]||m.status||"Status unavailable")+'</small></div>';const group=(title,matches)=>matches.length?'<div class="match-group"><h4 class="match-group-title">'+title+'</h4><div class="match-group-list">'+matches.map(renderMatch).join("")+'</div></div>':"";$("matchList").innerHTML=group("Live Now",live)+group("Upcoming Matches",upcoming)+group("Played Matches",played)||'<div class="match">No matches available from the connected providers right now.</div>';}render();}catch(e){render();}}
