@@ -398,7 +398,7 @@ def espn_matches():
     for slug, label in leagues:
         try:
             url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard?" + urllib.parse.urlencode({"dates": start_day + "-" + end_day})
-            payload = json.loads(request(url, timeout=20))
+            payload = json.loads(request(url, headers={"User-Agent": "python-requests/2.32.3", "Accept": "application/json"}, timeout=20))
             events = payload.get("events") or []
             for row in events:
                 item = normalise_match(row, label)
