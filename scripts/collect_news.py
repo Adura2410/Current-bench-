@@ -246,9 +246,14 @@ def football_rows(payload):
 def normalise_match(m, competition="Football"):
     comp=m.get("competition") or m.get("league") or m.get("tournament") or competition
     if isinstance(comp,dict): comp=comp.get("name") or comp.get("displayName") or comp.get("slug") or competition
-    date=m.get("utcDate") or m.get("date") or m.get("kickoff") or m.get("startDate") or m.get("dateUtc")
-    home=m.get("homeTeam") or m.get("home") or m.get("home_team")
-    away=m.get("awayTeam") or m.get("away") or m.get("away_team")
+    fixture=m.get("fixture") if isinstance(m.get("fixture"),dict) else {}
+    teams=m.get("teams") if isinstance(m.get("teams"),dict) else {}
+    goals=m.get("goals") if isinstance(m.get("goals"),dict) else {}
+    league=m.get("league") if isinstance(m.get("league"),dict) else {}
+    comp=league.get("name") or comp
+    date=m.get("utcDate") or m.get("date") or m.get("kickoff") or m.get("startDate") or m.get("dateUtc") or fixture.get("date")
+    home=m.get("homeTeam") or m.get("home") or m.get("home_team") or teams.get("home")
+    away=m.get("awayTeam") or m.get("away") or m.get("away_team") or teams.get("away")
     comps=m.get("competitions") or []
     competitors=comps[0].get("competitors",[]) if comps and isinstance(comps[0],dict) else []
     if competitors:
@@ -260,9 +265,10 @@ def normalise_match(m, competition="Football"):
         if isinstance(x,dict): return x.get("name") or x.get("displayName") or x.get("shortName") or fallback
         return x if isinstance(x,str) and x else fallback
     hn,an=nm(home,"Home"),nm(away,"Away")
-    status=m.get("status") or m.get("state") or m.get("statusText") or ""
+    status=m.get("status") or m.get("state") or m.get("statusText") or fixture.get("status") or ""
     if isinstance(status,dict): status=status.get("short") or status.get("name") or status.get("description") or ""
     score="—"; sc=m.get("score")
+    if goals.get("home") is not None and goals.get("away") is not None: score=f"{goals['home']} - {goals['away']}"
     if isinstance(sc,dict):
         ft=sc.get("fullTime") or sc.get("current") or sc
         if isinstance(ft,dict):
@@ -335,8 +341,40 @@ def football_data_matches():
     print(f"football-data.org: {len(matches)} usable matches")
     return matches
 
+def api_football_matches():
+    token=os.getenv("API_FOOTBALL_KEY","").strip()
+    if not token:
+        FOOTBALL_PROVIDER_STATUS["api_football"] = "API_FOOTBALL_KEY secret not configured"
+        print("API-Football: optional API key not configured")
+        return []
+    # Six priority competitions: 48 requests/day on the three-hour schedule.
+    leagues=[(39,"Premier League"),(140,"La Liga"),(3,"UEFA Europa League"),(48,"Carabao Cup"),(2,"UEFA Champions League"),(45,"FA Cup")]
+    now=datetime.now(timezone.utc)
+    from_day=datetime.fromtimestamp(now.timestamp()-7*86400,timezone.utc).date().isoformat()
+    to_day=datetime.fromtimestamp(now.timestamp()+21*86400,timezone.utc).date().isoformat()
+    season=now.year if now.month>=7 else now.year-1
+    found=[]
+    for league_id,label in leagues:
+        try:
+            url="https://v3.football.api-sports.io/fixtures?league="+str(league_id)+"&season="+str(season)+"&from="+from_day+"&to="+to_day
+            payload=json.loads(request(url,headers={"x-apisports-key":token},timeout=20))
+            if payload.get("errors"):
+                print(f"API-Football {label} skipped: provider returned an error")
+                continue
+            for row in payload.get("response",[]):
+                item=normalise_match(row,label)
+                if item and match_in_window(item):
+                    item["competition"]=label
+                    found.append(item)
+            time.sleep(.25)
+        except Exception as exc:
+            print(f"API-Football {label} skipped: {type(exc).__name__}")
+    FOOTBALL_PROVIDER_STATUS["api_football"]=f"{len(found)} usable matches across priority competitions"
+    print(f"API-Football: {len(found)} usable matches across priority competitions")
+    return found
+
 def football_matches():
-    combined=matchgrind_matches()+football_data_matches()
+    combined=api_football_matches()+matchgrind_matches()+football_data_matches()
     unique={}
     for m in combined:
         key=(re.sub(r"\\W+"," ",m["home"].lower()).strip(),re.sub(r"\\W+"," ",m["away"].lower()).strip(),m.get("date","")[:10])
@@ -382,7 +420,7 @@ def main():
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
     # Keep a broad rotating window, but do not scrape full article bodies or publisher images.
-    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":FOOTBALL_PROVIDER_STATUS.get("matchgrind","not checked"),"football_data_org":FOOTBALL_PROVIDER_STATUS.get("football_data_org","not checked")}}
+    payload={"generated_at":datetime.now(timezone.utc).isoformat(),"articles":articles[:300],"matches":football_matches(),"providers":{"rss":"partial; some feeds may be unavailable","gdelt":"attempted","matchgrind":FOOTBALL_PROVIDER_STATUS.get("matchgrind","not checked"),"football_data_org":FOOTBALL_PROVIDER_STATUS.get("football_data_org","not checked"),"api_football":FOOTBALL_PROVIDER_STATUS.get("api_football","not checked")}}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
     print(f"Wrote {min(len(articles),300)} unique headlines to {OUT}")
