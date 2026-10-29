@@ -552,21 +552,25 @@ def main():
     articles=[infer_article_categories(a) for a in articles]
     unique={}
     url_index={}
+    title_index={}
     for a in articles:
         title_key=re.sub(r"\W+"," ",a.get("title","").lower()).strip()
         if not title_key: continue
         parts=urllib.parse.urlsplit(str(a.get("url") or "").strip())
         url_key=urllib.parse.urlunsplit((parts.scheme.lower(),parts.netloc.lower(),parts.path.rstrip("/") or "/",parts.query,"")) if parts.netloc else ""
         key=url_index.get(url_key) if url_key else None
-        if key is None and title_key in unique:
-            key=title_key
+        if key is None:
+            key=title_index.get(title_key)
         incoming=list(dict.fromkeys([str(c) for c in (a.get("categories") or []) if c]))
         if a.get("category") and a["category"] not in incoming:
             incoming.append(a["category"])
         if key is None:
             key=title_key
+            while key in unique:
+                key=title_key+" "+str(len(unique))
             unique[key]=a
             a["categories"]=incoming
+            title_index[title_key]=key
             if url_key: url_index[url_key]=key
             continue
         current=unique[key]
@@ -579,6 +583,7 @@ def main():
         if a.get("content") and not current.get("content"):
             a["categories"]=merged
             unique[key]=a
+        title_index[title_key]=key
         if url_key: url_index[url_key]=key
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
