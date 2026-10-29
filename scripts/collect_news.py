@@ -196,9 +196,24 @@ def main():
     for a in articles:
         key=re.sub(r"\W+"," ",a["title"].lower()).strip()
         if not key: continue
+        incoming=list(dict.fromkeys([str(c) for c in (a.get("categories") or []) if c]))
+        if a.get("category") and a["category"] not in incoming:
+            incoming.append(a["category"])
         if key not in unique:
+            a["categories"]=incoming
             unique[key]=a
-        elif a.get("content") and not unique[key].get("content"):
+            continue
+        # A headline may arrive from multiple topic feeds. Keep every supported
+        # category instead of letting whichever feed runs first decide its section.
+        current=unique[key]
+        merged=list(dict.fromkeys((current.get("categories") or [])+incoming))
+        if current.get("category") and current["category"] not in merged:
+            merged.append(current["category"])
+        if a.get("category") and a["category"] not in merged:
+            merged.append(a["category"])
+        current["categories"]=merged
+        if a.get("content") and not current.get("content"):
+            a["categories"]=merged
             unique[key]=a
     articles=list(unique.values())
     articles.sort(key=lambda x:x.get("published") or "",reverse=True)
