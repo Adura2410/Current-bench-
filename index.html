@@ -192,6 +192,13 @@ main{max-width:none;margin:0 0 0 312px;padding:20px 22px 64px;min-width:0}
 }
 @media(max-width:390px){.story-grid{grid-template-columns:1fr}.feature{min-height:250px}}
 
+
+/* Fix: the drawer stays hidden until the hamburger is tapped */
+#siteMenu.hidden{display:none!important}
+#siteMenu:not(.hidden){display:flex!important}
+#siteMenu button:not(.menu-close):before{content:none!important;display:none!important}
+@media(min-width:761px){body.menu-open:after{content:"";position:fixed;inset:0;z-index:115;background:rgba(1,8,19,.72);backdrop-filter:blur(2px)}}
+
 </style>
 </head>
 <body>
