@@ -330,6 +330,14 @@ body.menu-open:after{content:"";position:fixed;inset:0;z-index:115;background:rg
 @media(max-width:760px){.footer-inner{grid-template-columns:minmax(0,1fr)!important}.footer{padding-bottom:30px!important}}
 /* Keep the article reader above navigation overlays so it cannot be obscured by the menu. */
 .reader-backdrop{z-index:200!important}
+
+/* NAVIGATION CLICK FIX: keep the page dimmer behind the drawer.
+   The header must not trap the fixed drawer in a lower stacking layer. */
+header{z-index:auto!important}
+#siteMenu{z-index:120!important;pointer-events:auto!important}
+body.menu-open:after{z-index:115!important;pointer-events:auto!important}
+#menuToggle{z-index:121!important}
+
 </style>
 </head>
 <body>
