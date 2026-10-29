@@ -506,7 +506,7 @@ def football_matches():
             if not old.get("status") and m.get("status"): old["status"]=m["status"]
     result=sorted(unique.values(),key=lambda m:m.get("date",""))
     print(f"Combined football providers: {len(result)} unique matches")
-    return result[:300]
+    return result[:1000]
 
 def main():
     articles=[]
