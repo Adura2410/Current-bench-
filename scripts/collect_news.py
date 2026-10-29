@@ -381,7 +381,6 @@ def api_football_matches():
 
 def espn_matches():
     """Supplement restricted current-season cup coverage with ESPN's public soccer scoreboard."""
-    # Public scoreboard endpoints; no API key. Keep requests bounded to the same fixture window.
     leagues = [
         ("eng.1", "Premier League"),
         ("esp.1", "La Liga"),
@@ -394,29 +393,57 @@ def espn_matches():
     start_day = datetime.fromtimestamp(now.timestamp()-7*86400, timezone.utc).strftime("%Y%m%d")
     end_day = datetime.fromtimestamp(now.timestamp()+21*86400, timezone.utc).strftime("%Y%m%d")
     found = []
-    errors = 0
+    successful = 0
     for slug, label in leagues:
-        try:
-            url = "https://site.api.espn.com/apis/site/v2/sports/soccer/" + slug + "/scoreboard?" + urllib.parse.urlencode({"dates": start_day + "-" + end_day})
-            payload = json.loads(request(url, headers={"User-Agent": "python-requests/2.32.3", "Accept": "application/json"}, timeout=20))
-            events = payload.get("events") or []
-            for row in events:
-                item = normalise_match(row, label)
-                if item and match_in_window(item):
-                    item["competition"] = label
-                    # ESPN event status has nested type fields; expose a simple state when available.
-                    status = row.get("status") or {}
-                    if isinstance(status, dict):
-                        typ = status.get("type") or {}
-                        if isinstance(typ, dict):
-                            item["status"] = typ.get("name") or typ.get("description") or item.get("status", "")
-                    found.append(item)
-            time.sleep(.15)
-        except Exception as exc:
-            errors += 1
-            print(f"ESPN {label} scoreboard skipped: {type(exc).__name__}")
-    FOOTBALL_PROVIDER_STATUS["espn"] = f"{len(found)} usable matches across {len(leagues)-errors}/{len(leagues)} competitions"
-    print(f"ESPN football: {len(found)} usable matches across {len(leagues)-errors}/{len(leagues)} competitions")
+        payload = None
+        used_host = ""
+        last_error = None
+        # ESPN has exposed the same public scoreboard through both hostnames.
+        # Use a plain urllib request (no spoofed browser/requests User-Agent).
+        for host in ("site.api.espn.com", "site.web.api.espn.com"):
+            base = f"https://{host}/apis/site/v2/sports/soccer/{slug}/scoreboard"
+            urls = [
+                base + "?" + urllib.parse.urlencode({"dates": start_day + "-" + end_day}),
+                base,
+            ]
+            for url in urls:
+                try:
+                    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+                    with urllib.request.urlopen(req, timeout=20) as response:
+                        payload = json.loads(response.read().decode("utf-8"))
+                    used_host = host
+                    break
+                except urllib.error.HTTPError as exc:
+                    last_error = f"HTTP {exc.code} from {host}"
+                    # A no-date scoreboard request is a useful fallback when the
+                    # provider rejects a broad date range.
+                    print(f"ESPN {label} attempt failed: {last_error}")
+                except Exception as exc:
+                    last_error = f"{type(exc).__name__} from {host}"
+                    print(f"ESPN {label} attempt failed: {last_error}")
+            if payload is not None:
+                break
+        if payload is None:
+            print(f"ESPN {label} scoreboard unavailable after host/date fallbacks: {last_error or 'unknown error'}")
+            continue
+        successful += 1
+        events = payload.get("events") or []
+        usable_for_league = 0
+        for row in events:
+            item = normalise_match(row, label)
+            if item and match_in_window(item):
+                item["competition"] = label
+                status = row.get("status") or {}
+                if isinstance(status, dict):
+                    typ = status.get("type") or {}
+                    if isinstance(typ, dict):
+                        item["status"] = typ.get("name") or typ.get("description") or item.get("status", "")
+                found.append(item)
+                usable_for_league += 1
+        print(f"ESPN {label}: {usable_for_league} usable matches via {used_host} ({len(events)} scoreboard events)")
+        time.sleep(.15)
+    FOOTBALL_PROVIDER_STATUS["espn"] = f"{len(found)} usable matches across {successful}/{len(leagues)} competitions"
+    print(f"ESPN football: {len(found)} usable matches across {successful}/{len(leagues)} competitions")
     return found
 
 def football_matches():
